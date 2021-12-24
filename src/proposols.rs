@@ -84,3 +84,33 @@ pub enum ProposalKind {
     /// Just a signaling vote, with no execution.
     Vote,
 }
+
+/// Votes recorded in the proposal.
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug)]
+#[serde(crate = "near_sdk::serde")]
+pub enum Vote {
+    Approve = 0x0,
+    Reject = 0x1,
+    Remove = 0x2,
+}
+
+/// Proposal that are sent to this DAO.
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(Debug))]
+#[serde(crate = "near_sdk::serde")]
+pub struct Proposal {
+    /// Original proposer.
+    pub proposer: AccountId,
+    /// Description of this proposal.
+    pub description: String,
+    /// Kind of proposal with relevant information.
+    pub kind: ProposalKind,
+    /// Current status of the proposal.
+    pub status: ProposalStatus,
+    /// Count of votes per role per decision: yes / no / spam.
+    pub vote_counts: HashMap<String, [Balance; 3]>,
+    /// Map of who voted and how.
+    pub votes: HashMap<AccountId, Vote>,
+    /// Submission time (for voting period).
+    pub submission_time: U64,
+}
