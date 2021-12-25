@@ -1,6 +1,3 @@
-use crate::bounties::*;
-use crate::policy::*;
-use crate::types::*;
 /// Status of a proposal.
 use crate::*;
 
@@ -108,9 +105,16 @@ pub struct Proposal {
     /// Current status of the proposal.
     pub status: ProposalStatus,
     /// Count of votes per role per decision: yes / no / spam.
-    pub vote_counts: HashMap<String, [Balance; 3]>,
+    pub vote_counts: HashMap<AccountId, [Balance; 3]>,
     /// Map of who voted and how.
     pub votes: HashMap<AccountId, Vote>,
     /// Submission time (for voting period).
     pub submission_time: U64,
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(Debug))]
+#[serde(crate = "near_sdk::serde")]
+pub enum VersionedProposal {
+    Default(Proposal),
 }

@@ -52,7 +52,7 @@ pub struct VotePolicy {
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(Debug, PartialEq))]
 #[serde(crate = "near_sdk::serde")]
-pub struct RolePermission {
+pub struct Role {
     /// Name of the role to display to the user.
     pub name: String,
     /// Kind of the role: defines which users this permissions apply.
@@ -69,7 +69,7 @@ pub struct RolePermission {
 #[serde(crate = "near_sdk::serde")]
 pub struct Policy {
     /// List of roles and permissions for them in the current policy.
-    pub roles: Vec<RolePermission>,
+    pub roles: Vec<Role>,
     /// Default vote policy. Used when given proposal kind doesn't have special policy.
     pub default_vote_policy: VotePolicy,
     /// Proposal bond.
