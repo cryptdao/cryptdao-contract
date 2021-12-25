@@ -88,6 +88,5 @@ pub struct Policy {
 #[serde(crate = "near_sdk::serde", untagged)]
 pub enum VersionedPolicy {
     /// Default policy with given accounts as council.
-    Default(Vec<AccountId>),
     Current(Policy),
 }
