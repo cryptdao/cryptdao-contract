@@ -32,6 +32,16 @@ pub enum RoleKind {
     Group(HashSet<AccountId>),
 }
 
+impl RoleKind {
+    pub fn match_user(&self, user: &UserInfo) -> bool {
+        match self {
+            RoleKind::Everyone => true,
+            RoleKind::Member(amount) => user.amount >= amount.0,
+            RoleKind::Group(accounts) => accounts.contains(&user.account_id),
+        }
+    }
+}
+
 /// Defines configuration of the vote.
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(Debug, PartialEq))]
@@ -89,4 +99,57 @@ pub struct Policy {
 pub enum VersionedPolicy {
     /// Default policy with given accounts as council.
     Current(Policy),
+}
+
+pub struct UserInfo {
+    pub account_id: AccountId,
+    pub amount: Balance,
+}
+
+impl VersionedPolicy {
+    pub fn to_policy(self) -> Policy {
+        match self {
+            VersionedPolicy::Current(policy) => policy,
+            _ => unimplemented!(),
+        }
+    }
+}
+
+impl Policy {
+    fn get_user_roles(&self, user: UserInfo) -> HashMap<String, &Role> {
+        let mut roles = HashMap::default();
+        for role in self.roles.iter() {
+            if role.kind.match_user(&user) {
+                roles.insert(role.name.clone(), role);
+            }
+        }
+        roles
+    }
+
+    pub fn can_execute_action(
+        &self,
+        user: UserInfo,
+        proposal_kind: &ProposalKind,
+        action: &Action,
+    ) -> (Vec<&Role>, bool) {
+        let roles = self.get_user_roles(user);
+        let mut allowed = false;
+        let allowed_roles = roles
+            .into_iter()
+            .filter_map(|(name, role)| {
+                let allowed_role = role.permissions.contains(&format!(
+                    "{}:{}",
+                    proposal_kind.label(),
+                    action.label()
+                ));
+                allowed = allowed || allowed_role;
+                if allowed_role {
+                    Some(role)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        (allowed_roles, allowed)
+    }
 }

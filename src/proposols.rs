@@ -69,17 +69,25 @@ pub enum ProposalKind {
         amount: U128,
         msg: Option<String>,
     },
-    /// Sets staking contract. Can only be proposed if staking contract is not set yet.
-    SetStakingContract { staking_id: AccountId },
     /// Add new bounty.
-    AddBounty { bounty: Bounty },
-    /// Indicates that given bounty is done by given user.
-    BountyDone {
-        bounty_id: u64,
-        receiver_id: AccountId,
-    },
     /// Just a signaling vote, with no execution.
     Vote,
+}
+
+impl ProposalKind {
+    pub fn label(&self) -> &str {
+        match self {
+            ProposalKind::ChangeConfig { .. } => "ChangeConfig",
+            ProposalKind::ChangePolicy { .. } => "ChangePolicy",
+            ProposalKind::AddMemberToRole { .. } => "AddMemberToRole",
+            ProposalKind::RemoveMemberFromRole { .. } => "RemoveMemberFromRole",
+            ProposalKind::FunctionCall { .. } => "FunctionCall",
+            ProposalKind::UpgradeSelf { .. } => "UpgradeSelf",
+            ProposalKind::UpgradeRemote { .. } => "UpgradeRemote",
+            ProposalKind::Transfer { .. } => "Transfer",
+            ProposalKind::Vote { .. } => "Vote",
+        }
+    }
 }
 
 /// Votes recorded in the proposal.
@@ -117,4 +125,69 @@ pub struct Proposal {
 #[serde(crate = "near_sdk::serde")]
 pub enum VersionedProposal {
     Default(Proposal),
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(crate = "near_sdk::serde")]
+pub struct ProposalInput {
+    /// Description of this proposal.
+    pub description: String,
+    /// Kind of proposal with relevant information.
+    pub kind: ProposalKind,
+}
+
+impl From<ProposalInput> for Proposal {
+    fn from(input: ProposalInput) -> Self {
+        Proposal {
+            proposer: env::predecessor_account_id(),
+            description: input.description,
+            kind: input.kind,
+            status: ProposalStatus::InProgress,
+            vote_counts: HashMap::new(),
+            votes: HashMap::new(),
+            submission_time: get_timestamp(),
+        }
+    }
+}
+
+#[near_bindgen]
+impl Contract {
+    #[payable]
+    pub fn add_proposal(&mut self, proposal: ProposalInput) -> u64 {
+        let policy = self.policy.get().unwrap().to_policy();
+        assert!(
+            env::attached_deposit() >= policy.proposal_bond.0,
+            "ERR_MIN_BOND"
+        );
+
+        match &proposal.kind {
+            ProposalKind::ChangePolicy { policy } => match policy {
+                VersionedPolicy::Current(_) => {}
+                _ => panic!("ERR_INVALID_POLICY"),
+            },
+            ProposalKind::Transfer { token_id, msg, .. } => {
+                assert!(
+                    !(token_id.is_none()) || msg.is_none(),
+                    "ERR_INVALID_TRANSFER"
+                );
+            }
+            _ => panic!("ERR_UNSUPPORTED_PROPOSAL"),
+        };
+        assert!(
+            policy
+                .can_execute_action(
+                    self.internal_user_info(),
+                    &proposal.kind,
+                    &Action::AddProposal
+                )
+                .1,
+            "ERR_PERMISSION_DENIED"
+        );
+        let id = self.last_proposal_id;
+        self.proposals
+            .insert(&id, &VersionedProposal::Default(proposal.into()));
+        self.last_proposal_id += 1;
+        self.locked_amount += env::attached_deposit();
+        id
+    }
 }

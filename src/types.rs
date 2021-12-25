@@ -22,3 +22,28 @@ impl Config {
         }
     }
 }
+
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug)]
+#[serde(crate = "near_sdk::serde")]
+pub enum Action {
+    /// Create a new proposal.
+    AddProposal,
+    /// Remove a proposal.
+    RemoveProposal,
+    /// Vote on a proposal.
+    VoteApprove,
+    /// Reject a proposal.
+    VoteReject,
+    /// Remove a vote.
+    VoteRemove,
+    /// Finalize a proposal.
+    Finalize,
+    /// Move to the next stage.
+    MoveToHub,
+}
+
+impl Action {
+    pub fn label(&self) -> String {
+        format!("{:?}", self)
+    }
+}
