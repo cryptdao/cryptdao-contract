@@ -55,9 +55,9 @@ impl Contract {
         metadata: FungibleTokenMetadata,
     ) -> Self {
         let mut citizens = LookupMap::new(StorageKeys::Citizens);
-        council.clone().into_iter().for_each(|x| {
+        council.iter().for_each(|x| {
             citizens.insert(
-                &x,
+                x,
                 &VersionedCitizen::Current(Citizen::new(x.clone(), "council".to_string())),
             );
         });
