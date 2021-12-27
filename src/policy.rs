@@ -59,6 +59,16 @@ pub struct VotePolicy {
     pub threshold: WeightOrRatio,
 }
 
+impl Default for VotePolicy {
+    fn default() -> Self {
+        VotePolicy {
+            weight_kind: WeightKind::RoleWeight,
+            quorum: U128(0),
+            threshold: WeightOrRatio::Ratio(1, 2),
+        }
+    }
+}
+
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(Debug, PartialEq))]
 #[serde(crate = "near_sdk::serde")]
@@ -82,14 +92,10 @@ pub struct Policy {
     pub roles: Vec<Role>,
     /// Default vote policy. Used when given proposal kind doesn't have special policy.
     pub default_vote_policy: VotePolicy,
-    /// Proposal bond.
-    pub proposal_bond: U128,
     /// Expiration period for proposals.
     pub proposal_period: U64,
-    /// Bond for claiming a bounty.
-    pub bounty_bond: U128,
-    /// Period in which giving up on bounty is not punished.
-    pub bounty_forgiveness_period: U64,
+    /// Proposal bond.
+    pub proposal_bond: U128,
 }
 
 /// Versioned policy.
@@ -101,6 +107,49 @@ pub enum VersionedPolicy {
     Current(Policy),
 }
 
+impl Policy {
+    pub fn default_policy(council: Vec<AccountId>) -> Self {
+        Self {
+            roles: vec![
+                Role {
+                    name: "all".to_string(),
+                    kind: RoleKind::Everyone,
+                    permissions: vec![Action::AddProposal.label()].into_iter().collect(),
+                    vote_policy: HashMap::default(),
+                },
+                Role {
+                    name: "member".to_string(),
+                    kind: RoleKind::Member(U128(1)),
+                    permissions: vec![
+                        Action::AddProposal.label(),
+                        Action::VoteApprove.label(),
+                        Action::VoteReject.label(),
+                    ]
+                    .into_iter()
+                    .collect(),
+                    vote_policy: HashMap::default(),
+                },
+                Role {
+                    name: "council".to_string(),
+                    kind: RoleKind::Group(council.into_iter().collect()),
+                    permissions: vec![
+                        Action::AddProposal.label(),
+                        Action::VoteApprove.label(),
+                        Action::VoteReject.label(),
+                        Action::VoteRemove.label(),
+                        Action::Finalize.label(),
+                    ]
+                    .into_iter()
+                    .collect(),
+                    vote_policy: HashMap::default(),
+                },
+            ],
+            default_vote_policy: VotePolicy::default(),
+            proposal_period: U64::from(1_000_000_000 * 60 * 60 * 24 * 7),
+            proposal_bond: U128(10u128.pow(24)),
+        }
+    }
+}
 pub struct UserInfo {
     pub account_id: AccountId,
     pub amount: Balance,
