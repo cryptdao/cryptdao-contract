@@ -5,7 +5,9 @@ use near_sdk::collections::LazyOption;
 use near_sdk::collections::LookupMap;
 use near_sdk::json_types::{Base58CryptoHash, Base64VecU8, U128, U64};
 use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::{env, near_bindgen, AccountId, Balance, BorshStorageKey, PanicOnDefault};
+use near_sdk::{
+    env, log, near_bindgen, AccountId, Balance, BorshStorageKey, PanicOnDefault, PromiseOrValue,
+};
 use std::collections::{HashMap, HashSet};
 mod bounties;
 mod citizen;
@@ -48,6 +50,7 @@ pub enum StorageKeys {
 }
 
 const DATA_IMAGE_SVG_NEAR_ICON: &str = include_str!("../res/logo.svg");
+const TOTAL_SUPPLY: Balance = 1_000_000_000_000_000;
 
 fn default_metadata() -> FungibleTokenMetadata {
     FungibleTokenMetadata {
@@ -73,8 +76,8 @@ impl Contract {
             );
         });
         let mut headcount = council.len() as u64;
-
-        Self {
+        let owner_id = env::signer_account_id();
+        let mut this = Self {
             config: LazyOption::new(StorageKeys::Config, Some(&Config::new(name, purpose))),
             policy: LazyOption::new(
                 StorageKeys::Policy,
@@ -90,9 +93,23 @@ impl Contract {
             citizens: citizens,
             headcount: headcount,
             locked_amount: 0,
-        }
+        };
+        this.token.internal_register_account(&owner_id);
+        this.token.internal_deposit(&owner_id, TOTAL_SUPPLY);
+        this
+    }
+
+    fn on_account_closed(&mut self, account_id: AccountId, balance: Balance) {
+        log!("Closed @{} with {}", account_id, balance);
+    }
+
+    fn on_tokens_burned(&mut self, account_id: AccountId, amount: Balance) {
+        log!("Account @{} burned {}", account_id, amount);
     }
 }
+
+near_contract_standards::impl_fungible_token_core!(Contract, token, on_tokens_burned);
+near_contract_standards::impl_fungible_token_storage!(Contract, token, on_account_closed);
 
 impl Contract {
     pub fn get_user_weight(&self, account_id: &AccountId) -> Balance {
