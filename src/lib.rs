@@ -14,6 +14,7 @@ mod proposols;
 mod treasury;
 mod types;
 mod utils;
+mod views;
 use crate::citizen::*;
 use crate::policy::*;
 use crate::proposols::*;
@@ -30,6 +31,7 @@ pub struct Contract {
     proposals: LookupMap<u64, VersionedProposal>,
     last_proposal_id: u64,
     citizens: LookupMap<AccountId, VersionedCitizen>,
+    headcount: u64,
     treasury: VersionedTreasury,
     locked_amount: Balance,
 }
@@ -45,15 +47,24 @@ pub enum StorageKeys {
     Citizens,
 }
 
+const DATA_IMAGE_SVG_NEAR_ICON: &str = include_str!("../res/logo.svg");
+
+fn default_metadata() -> FungibleTokenMetadata {
+    FungibleTokenMetadata {
+        spec: "ft-1.0.0".to_string(),
+        name: "CryptDAO".to_string(),
+        symbol: "DAO".to_string(),
+        icon: Some(DATA_IMAGE_SVG_NEAR_ICON.to_string()),
+        reference: None,
+        reference_hash: None,
+        decimals: 24,
+    }
+}
+
 #[near_bindgen]
 impl Contract {
     #[init]
-    pub fn new(
-        name: String,
-        purpose: String,
-        council: Vec<AccountId>,
-        metadata: FungibleTokenMetadata,
-    ) -> Self {
+    pub fn new(name: String, purpose: String, council: Vec<AccountId>) -> Self {
         let mut citizens = LookupMap::new(StorageKeys::Citizens);
         council.iter().for_each(|x| {
             citizens.insert(
@@ -61,6 +72,7 @@ impl Contract {
                 &VersionedCitizen::Current(Citizen::new(x.clone(), "council".to_string())),
             );
         });
+        let mut headcount = council.len() as u64;
 
         Self {
             config: LazyOption::new(StorageKeys::Config, Some(&Config::new(name, purpose))),
@@ -71,11 +83,12 @@ impl Contract {
                 ))),
             ),
             token: FungibleToken::new(StorageKeys::Token),
-            token_metadata: LazyOption::new(StorageKeys::TokenMetadata, Some(&metadata)),
+            token_metadata: LazyOption::new(StorageKeys::TokenMetadata, Some(&default_metadata())),
             last_proposal_id: 0,
             proposals: LookupMap::new(StorageKeys::Proposals),
             treasury: VersionedTreasury::Current(Treasury::default()),
             citizens: citizens,
+            headcount: headcount,
             locked_amount: 0,
         }
     }

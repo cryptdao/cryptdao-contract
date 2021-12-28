@@ -1,6 +1,5 @@
 /// Versioned policy.
 use crate::*;
-use std::time::Instant;
 
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(Debug, PartialEq))]
@@ -11,7 +10,7 @@ pub struct Citizen {
     /// show citizen role.
     role_name: String,
     /// show citizen join date
-    joined: u64,
+    joined: U64,
 }
 
 impl Citizen {
@@ -19,7 +18,7 @@ impl Citizen {
         Self {
             account_id,
             role_name,
-            joined: Instant::now().elapsed().as_secs(),
+            joined: get_timestamp(),
         }
     }
 }
