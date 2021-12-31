@@ -4,6 +4,9 @@ use crate::*;
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, PartialEq, Debug)]
 #[serde(crate = "near_sdk::serde")]
 pub enum ProposalStatus {
+    /// New proposal.
+    New,
+    /// Proposal is waiting for council to vote.
     InProgress,
     /// If quorum voted yes, this proposal is successfully approved.
     Approved,
@@ -29,6 +32,26 @@ pub struct ActionCall {
     args: Base64VecU8,
     deposit: U128,
     gas: U64,
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone)]
+#[cfg_attr(not(target_arch = "wash32"), derive(Debug))]
+#[serde(crate = "near_sdk::serde")]
+pub struct VoteOption {
+    /// Option id of the Vote
+    pub id: u64,
+    /// Option
+    pub content: String,
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(Debug))]
+#[serde(crate = "near_sdk::serde")]
+pub struct VoteKind {
+    pub id: u64,
+    pub options: Vec<VoteOption>,
+    pub votes: HashMap<AccountId, Vec<VoteOption>>,
+    pub option_counts: HashMap<u64, Balance>,
 }
 
 /// Kinds of proposals, doing different action.
@@ -69,9 +92,8 @@ pub enum ProposalKind {
         amount: U128,
         msg: Option<String>,
     },
-    /// Add new bounty.
     /// Just a signaling vote, with no execution.
-    Vote,
+    Vote(VoteKind),
 }
 
 impl ProposalKind {
@@ -106,18 +128,19 @@ pub enum Vote {
 pub struct Proposal {
     /// Original proposer.
     pub proposer: AccountId,
+    /// Proposal title.
+    pub title: String,
     /// Description of this proposal.
     pub description: String,
     /// Kind of proposal with relevant information.
     pub kind: ProposalKind,
     /// Current status of the proposal.
     pub status: ProposalStatus,
-    /// Count of votes per role per decision: yes / no / spam.
-    pub vote_counts: HashMap<AccountId, [Balance; 3]>,
-    /// Map of who voted and how.
-    pub votes: HashMap<AccountId, Vote>,
-    /// Submission time (for voting period).
     pub submission_time: U64,
+    /// Voting period start time.
+    pub proposal_start_time: U64,
+    /// Voting period end time.
+    pub proposal_end_time: U64,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
@@ -130,22 +153,27 @@ pub enum VersionedProposal {
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "near_sdk::serde")]
 pub struct ProposalInput {
+    /// Proposal title.
+    pub title: String,
     /// Description of this proposal.
     pub description: String,
     /// Kind of proposal with relevant information.
     pub kind: ProposalKind,
+    pub proposal_start_time: U64,
+    pub proposal_end_time: U64,
 }
 
 impl From<ProposalInput> for Proposal {
     fn from(input: ProposalInput) -> Self {
-        Proposal {
+        Self {
+            title: input.title,
             proposer: env::predecessor_account_id(),
             description: input.description,
             kind: input.kind,
             status: ProposalStatus::InProgress,
-            vote_counts: HashMap::new(),
-            votes: HashMap::new(),
             submission_time: get_timestamp(),
+            proposal_start_time: input.proposal_start_time,
+            proposal_end_time: input.proposal_end_time,
         }
     }
 }
