@@ -175,22 +175,14 @@ impl Policy {
         roles
     }
 
-    pub fn can_execute_action(
-        &self,
-        user: UserInfo,
-        proposal_kind: &ProposalKind,
-        action: &Action,
-    ) -> (Vec<&Role>, bool) {
+    pub fn can_execute_action(&self, user: UserInfo, action: &Action) -> (Vec<&Role>, bool) {
         let roles = self.get_user_roles(user);
         let mut allowed = false;
         let allowed_roles = roles
             .into_iter()
             .filter_map(|(name, role)| {
-                let allowed_role = role.permissions.contains(&format!(
-                    "{}:{}",
-                    proposal_kind.label(),
-                    action.label()
-                ));
+                log!(name);
+                let allowed_role = role.permissions.contains(&action.label());
                 allowed = allowed || allowed_role;
                 if allowed_role {
                     Some(role)

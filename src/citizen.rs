@@ -10,7 +10,7 @@ pub struct Citizen {
     /// show citizen role.
     role_name: String,
     /// show citizen join date
-    joined: U64,
+    joined: u64,
 }
 
 impl Citizen {

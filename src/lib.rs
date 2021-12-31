@@ -140,6 +140,7 @@ mod tests {
         //testing_env!(context.attached_deposit(to_yo))
         testing_env!(context.attached_deposit(to_yocto(1)).build());
         contract.add_proposal(ProposalInput {
+            title: "hello".to_string(),
             description: "test".to_string(),
             kind: ProposalKind::Transfer {
                 token_id: None,
@@ -147,6 +148,8 @@ mod tests {
                 amount: U128(to_yocto("100")),
                 msg: None,
             },
+            proposal_start_time: 1640946675,
+            proposal_end_time: 1641046711,
         })
     }
 

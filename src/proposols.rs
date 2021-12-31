@@ -39,7 +39,7 @@ pub struct ActionCall {
 #[serde(crate = "near_sdk::serde")]
 pub struct VoteOption {
     /// Option id of the Vote
-    pub id: u64,
+    pub name: String,
     /// Option
     pub content: String,
 }
@@ -48,7 +48,6 @@ pub struct VoteOption {
 #[cfg_attr(not(target_arch = "wasm32"), derive(Debug))]
 #[serde(crate = "near_sdk::serde")]
 pub struct VoteKind {
-    pub id: u64,
     pub options: Vec<VoteOption>,
     pub votes: HashMap<AccountId, Vec<VoteOption>>,
     pub option_counts: HashMap<u64, Balance>,
@@ -58,6 +57,7 @@ pub struct VoteKind {
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(Clone, Debug))]
 #[serde(crate = "near_sdk::serde")]
+#[serde(tag = "type")]
 pub enum ProposalKind {
     /// Change the DAO config.
     ChangeConfig { config: Config },
@@ -136,11 +136,11 @@ pub struct Proposal {
     pub kind: ProposalKind,
     /// Current status of the proposal.
     pub status: ProposalStatus,
-    pub submission_time: U64,
+    pub submission_time: u64,
     /// Voting period start time.
-    pub proposal_start_time: U64,
+    pub proposal_start_time: u64,
     /// Voting period end time.
-    pub proposal_end_time: U64,
+    pub proposal_end_time: u64,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
@@ -159,8 +159,10 @@ pub struct ProposalInput {
     pub description: String,
     /// Kind of proposal with relevant information.
     pub kind: ProposalKind,
-    pub proposal_start_time: U64,
-    pub proposal_end_time: U64,
+    /// start time of the voting period.
+    pub proposal_start_time: u64,
+    /// end time of the voting period.
+    pub proposal_end_time: u64,
 }
 
 impl From<ProposalInput> for Proposal {
@@ -199,15 +201,17 @@ impl Contract {
                     "ERR_INVALID_TRANSFER"
                 );
             }
+            ProposalKind::AddMemberToRole { member_id, role } => {
+                assert!(
+                    !(member_id.as_str().is_empty() || role.is_empty()),
+                    "ERR_INVALID_ADD_MEMBER"
+                );
+            }
             _ => panic!("ERR_UNSUPPORTED_PROPOSAL"),
         };
         assert!(
             policy
-                .can_execute_action(
-                    self.internal_user_info(),
-                    &proposal.kind,
-                    &Action::AddProposal
-                )
+                .can_execute_action(self.internal_user_info(), &Action::AddProposal)
                 .1,
             "ERR_PERMISSION_DENIED"
         );

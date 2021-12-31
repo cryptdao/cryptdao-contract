@@ -18,6 +18,7 @@ impl Contract {
     }
 
     pub fn get_citizen(&self, account_id: AccountId) -> Option<Citizen> {
+        log!("found {}", account_id);
         match self.citizens.get(&account_id) {
             Some(VersionedCitizen::Current(citizen)) => Some(citizen),
             _ => None,
