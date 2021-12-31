@@ -23,4 +23,8 @@ impl Contract {
             _ => None,
         }
     }
+
+    pub fn get_policy(&self) -> Policy {
+        self.policy.get().unwrap().to_policy().clone()
+    }
 }
