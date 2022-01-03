@@ -1,4 +1,5 @@
 use crate::*;
+use std::cmp::min;
 
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(Debug, PartialEq))]
@@ -43,5 +44,16 @@ impl Contract {
             id,
             proposal: proposal.into(),
         }
+    }
+
+    pub fn get_proposals(&self, from_index: u64, limit: u64) -> Vec<ProposalOutput> {
+        (from_index..min(self.last_proposal_id, from_index + limit))
+            .filter_map(|id| {
+                self.proposals.get(&id).map(|proposal| ProposalOutput {
+                    id,
+                    proposal: proposal.into(),
+                })
+            })
+            .collect()
     }
 }
