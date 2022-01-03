@@ -150,6 +150,13 @@ pub enum VersionedProposal {
     Default(Proposal),
 }
 
+impl From<VersionedProposal> for Proposal {
+    fn from(v: VersionedProposal) -> Self {
+        match v {
+            VersionedProposal::Default(p) => p,
+        }
+    }
+}
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "near_sdk::serde")]
 pub struct ProposalInput {
