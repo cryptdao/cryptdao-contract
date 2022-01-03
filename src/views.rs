@@ -19,6 +19,7 @@ pub struct ProposalOutput {
 
 #[near_bindgen]
 impl Contract {
+    /// get the current metadata of the dao.
     pub fn metadata(&self) -> DaoMeta {
         DaoMeta {
             name: self.config.get().unwrap().name.clone(),
@@ -26,6 +27,7 @@ impl Contract {
         }
     }
 
+    /// get citizen with given account id.
     pub fn get_citizen(&self, account_id: AccountId) -> Option<Citizen> {
         log!("found {}", account_id);
         match self.citizens.get(&account_id) {
@@ -34,10 +36,12 @@ impl Contract {
         }
     }
 
+    /// get current policy.
     pub fn get_policy(&self) -> Policy {
         self.policy.get().unwrap().to_policy().clone()
     }
 
+    /// get the proposal with given id.
     pub fn get_proposal(&self, id: u64) -> ProposalOutput {
         let proposal = self.proposals.get(&id).expect("ERR_NO_PROPOSAL");
         ProposalOutput {
@@ -46,6 +50,7 @@ impl Contract {
         }
     }
 
+    /// get all proposals
     pub fn get_proposals(&self, from_index: u64, limit: u64) -> Vec<ProposalOutput> {
         (from_index..min(self.last_proposal_id, from_index + limit))
             .filter_map(|id| {
