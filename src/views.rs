@@ -7,6 +7,7 @@ use std::cmp::min;
 pub struct DaoMeta {
     pub name: String,
     pub headcount: u64,
+    pub last_proposal_id: u64,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -19,11 +20,12 @@ pub struct ProposalOutput {
 
 #[near_bindgen]
 impl Contract {
-    /// get the current metadata of the dao.
+    /// get the current metadata of the dao
     pub fn metadata(&self) -> DaoMeta {
         DaoMeta {
             name: self.config.get().unwrap().name.clone(),
             headcount: self.headcount,
+            last_proposal_id: self.last_proposal_id,
         }
     }
 
