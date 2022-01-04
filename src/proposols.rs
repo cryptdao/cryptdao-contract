@@ -50,7 +50,7 @@ pub struct VoteOption {
 pub struct VoteKind {
     pub options: Vec<VoteOption>,
     pub votes: HashMap<AccountId, Vec<VoteOption>>,
-    pub option_counts: HashMap<u64, Balance>,
+    pub option_counts: HashMap<String, Balance>,
 }
 
 /// Kinds of proposals, doing different action.
