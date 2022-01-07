@@ -39,9 +39,9 @@ pub struct ActionCall {
 #[serde(crate = "near_sdk::serde")]
 pub struct VoteOption {
     /// Option id of the Vote
-    pub name: String,
+    pub id: u64,
     /// Option
-    pub content: String,
+    pub value: String,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone)]
@@ -112,6 +112,19 @@ impl ProposalKind {
     }
 }
 
+impl From<ProposalInputKind> for ProposalKind {
+    fn from(input: ProposalInputKind) -> Self {
+        match input {
+            ProposalInputKind::Vote(vote_kind) => ProposalKind::Vote(VoteKind {
+                options: vote_kind.options,
+                votes: HashMap::new(),
+                option_counts: HashMap::new(),
+            }),
+            _ => unimplemented!(),
+        }
+    }
+}
+
 /// Votes recorded in the proposal.
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug)]
 #[serde(crate = "near_sdk::serde")]
@@ -157,6 +170,56 @@ impl From<VersionedProposal> for Proposal {
         }
     }
 }
+
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(Debug))]
+#[serde(crate = "near_sdk::serde")]
+pub struct VoteInputKind {
+    pub options: Vec<VoteOption>,
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(Clone, Debug))]
+#[serde(crate = "near_sdk::serde")]
+#[serde(tag = "type")]
+pub enum ProposalInputKind {
+    /// Change the DAO config.
+    ChangeConfig { config: Config },
+    /// Change the full policy.
+    ChangePolicy { policy: VersionedPolicy },
+    /// Add member to given role in the policy. This is short cut to updating the whole policy.
+    AddMemberToRole { member_id: AccountId, role: String },
+    /// Remove member to given role in the policy. This is short cut to updating the whole policy.
+    RemoveMemberFromRole { member_id: AccountId, role: String },
+    /// Calls `receiver_id` with list of method names in a single promise.
+    /// Allows this contract to execute any arbitrary set of actions in other contracts.
+    FunctionCall {
+        receiver_id: AccountId,
+        actions: Vec<ActionCall>,
+    },
+    /// Upgrade this contract with given hash from blob store.
+    UpgradeSelf { hash: Base58CryptoHash },
+    /// Upgrade another contract, by calling method with the code from given hash from blob store.
+    UpgradeRemote {
+        receiver_id: AccountId,
+        method_name: String,
+        hash: Base58CryptoHash,
+    },
+    /// Transfers given amount of `token_id` from this DAO to `receiver_id`.
+    /// If `msg` is not None, calls `ft_transfer_call` with given `msg`. Fails if this base token.
+    /// For `ft_transfer` and `ft_transfer_call` `memo` is the `description` of the proposal.
+    Transfer {
+        /// Can be "" for $NEAR or a valid account id.
+        #[serde(with = "serde_with::rust::string_empty_as_none")]
+        token_id: Option<AccountId>,
+        receiver_id: AccountId,
+        amount: U128,
+        msg: Option<String>,
+    },
+    /// Just a vote options
+    Vote(VoteInputKind),
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "near_sdk::serde")]
 pub struct ProposalInput {
@@ -165,7 +228,7 @@ pub struct ProposalInput {
     /// Description of this proposal.
     pub description: String,
     /// Kind of proposal with relevant information.
-    pub kind: ProposalKind,
+    pub kind: ProposalInputKind,
     /// start time of the voting period.
     pub proposal_start_time: u64,
     /// end time of the voting period.
@@ -178,7 +241,7 @@ impl From<ProposalInput> for Proposal {
             title: input.title,
             proposer: env::predecessor_account_id(),
             description: input.description,
-            kind: input.kind,
+            kind: ProposalKind::from(input.kind),
             status: ProposalStatus::InProgress,
             submission_time: get_timestamp(),
             proposal_start_time: input.proposal_start_time,
@@ -198,17 +261,17 @@ impl Contract {
         );
 
         match &proposal.kind {
-            ProposalKind::ChangePolicy { policy } => match policy {
+            ProposalInputKind::ChangePolicy { policy } => match policy {
                 VersionedPolicy::Current(_) => {}
                 _ => panic!("ERR_INVALID_POLICY"),
             },
-            ProposalKind::Transfer { token_id, msg, .. } => {
+            ProposalInputKind::Transfer { token_id, msg, .. } => {
                 assert!(
                     !(token_id.is_none()) || msg.is_none(),
                     "ERR_INVALID_TRANSFER"
                 );
             }
-            ProposalKind::AddMemberToRole { member_id, role } => {
+            ProposalInputKind::AddMemberToRole { member_id, role } => {
                 assert!(
                     !(member_id.as_str().is_empty() || role.is_empty()),
                     "ERR_INVALID_ADD_MEMBER"
