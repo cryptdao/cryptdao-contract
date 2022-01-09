@@ -115,8 +115,8 @@ impl ProposalKind {
 impl From<ProposalInputKind> for ProposalKind {
     fn from(input: ProposalInputKind) -> Self {
         match input {
-            ProposalInputKind::Vote(vote_kind) => ProposalKind::Vote(VoteKind {
-                options: vote_kind.options,
+            ProposalInputKind::Vote { options } => ProposalKind::Vote(VoteKind {
+                options: options,
                 votes: HashMap::new(),
                 option_counts: HashMap::new(),
             }),
@@ -171,13 +171,6 @@ impl From<VersionedProposal> for Proposal {
     }
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(Debug))]
-#[serde(crate = "near_sdk::serde")]
-pub struct VoteInputKind {
-    pub options: Vec<VoteOption>,
-}
-
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(Clone, Debug))]
 #[serde(crate = "near_sdk::serde")]
@@ -217,7 +210,7 @@ pub enum ProposalInputKind {
         msg: Option<String>,
     },
     /// Just a vote options
-    Vote(VoteInputKind),
+    Vote { options: Vec<VoteOption> },
 }
 
 #[derive(Serialize, Deserialize)]
@@ -276,6 +269,9 @@ impl Contract {
                     !(member_id.as_str().is_empty() || role.is_empty()),
                     "ERR_INVALID_ADD_MEMBER"
                 );
+            }
+            ProposalInputKind::Vote { options } => {
+                assert!(!options.is_empty(), "ERR_INVALID_VOTE");
             }
             _ => panic!("ERR_UNSUPPORTED_PROPOSAL"),
         };
